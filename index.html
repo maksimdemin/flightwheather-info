@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Погода</title>
+<style>
+/* ── TOKENS ──────────────────────────────────────────────── */
+:root {
+  --f: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  --fm: 'SF Mono', 'Menlo', 'Consolas', monospace;
+
+  /* dark */
+  --bg:        #0a0a0f;
+  --layer1:    rgba(28,28,36,0.92);
+  --layer2:    rgba(36,36,46,0.85);
+  --layer3:    rgba(44,44,56,0.80);
+  --glass:     rgba(255,255,255,0.06);
+  --glass-hov: rgba(255,255,255,0.10);
+  --border:    rgba(255,255,255,0.09);
+  --border2:   rgba(255,255,255,0.05);
+  --text:      rgba(255,255,255,0.92);
+  --text2:     rgba(255,255,255,0.45);
+  --text3:     rgba(255,255,255,0.28);
+  --accent:    #0a84ff;
+  --accent2:   #30d158;
+  --cold:      #64d2ff;
+  --hot:       #ff6961;
+  --orange:    #ff9f0a;
+  --blue-hl:   rgba(10,132,255,0.15);
+  --orange-hl: rgba(255,159,10,0.18);
+  --radius-sm: 8px;
+  --radius:    14px;
+  --radius-lg: 20px;
+  --blur:      blur(24px) saturate(180%);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.4);
+  --shadow:    0 4px 24px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.6);
+}
+[data-theme="light"] {
+  --bg:        #f2f2f7;
+  --layer1:    rgba(255,255,255,0.88);
+  --layer2:    rgba(248,248,253,0.90);
+  --layer3:    rgba(240,240,248,0.85);
+  --glass:     rgba(0,0,0,0.04);
+  --glass-hov: rgba(0,0,0,0.07);
+  --border:    rgba(0,0,0,0.09);
+  --border2:   rgba(0,0,0,0.05);
+  --text:      rgba(0,0,0,0.90);
+  --text2:     rgba(0,0,0,0.45);
+  --text3:     rgba(0,0,0,0.28);
+  --accent:    #007aff;
+  --accent2:   #34c759;
+  --cold:      #0071e3;
+  --hot:       #ff3b30;
+  --orange:    #ff9500;
+  --blue-hl:   rgba(0,122,255,0.10);
+  --orange-hl: rgba(255,149,0,0.14);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.08);
+  --shadow:    0 4px 24px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+}
+
+/* ── RESET ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── BACKGROUND GRADIENT (dark) ──────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(10,132,255,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(48,209,88,0.07) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(0,122,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(52,199,89,0.05) 0%, transparent 60%);
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--layer1);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px 10px;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.app-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+  flex: 1;
+}
+.app-title span { color: var(--accent); }
+.source-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text2);
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  letter-spacing: 0.2px;
+}
+.header-controls { display: flex; align-items: center; gap: 6px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 20px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--f);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+}
+.btn:hover  { background: var(--glass-hov); }
+.btn:active { transform: scale(0.96); }
+.btn-accent { color: var(--accent); border-color: rgba(10,132,255,0.35); }
+[data-theme="light"] .btn-accent { border-color: rgba(0,122,255,0.30); }
+.btn-icon { padding: 6px 10px; font-size: 14px; }
+
+.updated-time {
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 8px;
+  font-weight: 400;
+  letter-spacing: 0.1px;
+}
+
+/* ── SUMMARY GRID ────────────────────────────────────────── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.summary-item {
+  display: flex;
+  align-items: center;
+  background: var(--glass);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 7px 8px;
+  gap: 6px;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+.summary-item:hover { background: var(--glass-hov); }
+.summary-icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
+.summary-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-width: 0; }
+.summary-city {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+  letter-spacing: 0.1px;
+}
+.summary-temps {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+}
+.summary-map-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 2px;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.summary-map-btn:hover { opacity: 1; }
+
+/* ── MAIN CONTENT ────────────────────────────────────────── */
+.main-content {
+  position: relative;
+  z-index: 1;
+  padding: 14px 14px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ── CITY BLOCK ──────────────────────────────────────────── */
+.city-block {
+  background: var(--layer1);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s;
+}
+.city-block.open { box-shadow: var(--shadow-lg); }
+
+.city-header {
+  display: flex;
+  align-items: center;
+  padding: 13px 16px;
+  cursor: pointer;
+  gap: 10px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 52px;
+  transition: background 0.15s;
+}
+.city-header:hover { background: var(--glass); }
+
+.city-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
+}
+.city-chevron svg { display: block; }
+.city-block.open .city-chevron { transform: rotate(90deg); opacity: 0.7; }
+
+.city-wx-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.city-name {
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+  letter-spacing: -0.2px;
+}
+.city-temps-inline {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+  flex-shrink: 0;
+}
+.city-map-btn {
+  background: var(--glass);
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+  line-height: 1;
+}
+.city-map-btn:hover { background: var(--glass-hov); }
+
+.city-content {
+  display: none;
+  padding: 0 12px 14px;
+  -webkit-overflow-scrolling: touch;
+}
+.city-block.open .city-content { display: block; }
+
+/* ── FLOATING TABLE HEADER ───────────────────────────────── */
+.sticky-thead {
+  display: none;
+  position: fixed;
+  left: 0; right: 0;
+  z-index: 150;
+  overflow: hidden;
+  background: var(--layer1);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+.sticky-thead.visible { display: block; }
+.sticky-thead table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+  font-family: var(--fm);
+  table-layout: fixed;
+}
+.sticky-thead th {
+  color: var(--text2);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  font-family: var(--f);
+}
+
+/* Context bar: город + дата */
+.sticky-context {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px 4px;
+  border-bottom: 1px solid var(--border2);
+}
+.sticky-context-icon { font-size: 14px; line-height: 1; }
+.sticky-context-city {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--f);
+  letter-spacing: -0.2px;
+}
+.sticky-context-sep {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--f);
+}
+.sticky-context-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  font-family: var(--f);
+  letter-spacing: 0.1px;
+}
+
+/* ── DAY SECTION ─────────────────────────────────────────── */
+.day-section { margin-top: 12px; }
+.day-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 5px 10px;
+  background: rgba(10,132,255,0.10);
+  border-radius: var(--radius-sm);
+}
+[data-theme="light"] .day-label { background: rgba(0,122,255,0.08); }
+.day-label-icon { font-size: 15px; }
+
+/* ── WEATHER TABLE ───────────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+}
+.weather-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+  min-width: 380px;
+  font-family: var(--fm);
+}
+.weather-table thead tr {
+  background: transparent;
+}
+.weather-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  color: var(--text2);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 8px 10px;
+  text-align: center;
+  background: var(--layer2);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+  font-family: var(--f);
+  box-shadow: 0 1px 0 var(--border);
+}
+.weather-table th:first-child { border-radius: var(--radius-sm) 0 0 0; }
+.weather-table th:last-child  { border-radius: 0 var(--radius-sm) 0 0; }
+.weather-table td {
+  padding: 6px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border2);
+  background: transparent;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.1s;
+}
+.weather-table tbody tr:last-child td { border-bottom: none; }
+.weather-table tbody tr:nth-child(even) td { background: var(--glass); }
+.weather-table tbody tr:hover td { background: var(--glass-hov) !important; }
+
+.time-col {
+  font-weight: 600;
+  color: var(--text2);
+  font-size: 11.5px;
+  width: 52px;
+  letter-spacing: 0.3px;
+}
+.icon-col {
+  font-size: 16px;
+  width: 32px;
+  padding: 4px 6px !important;
+}
+
+/* ── DAY TABS ────────────────────────────────────────────── */
+.day-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 10px 0 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.day-tabs::-webkit-scrollbar { display: none; }
+.day-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text2);
+  font-family: var(--f);
+  padding: 7px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.day-tab:hover { background: var(--glass-hov); color: var(--text); }
+.day-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day-tab-icon { font-size: 16px; line-height: 1; }
+.day-tab-date { font-size: 11px; font-weight: 600; letter-spacing: 0.1px; }
+.day-panels { padding-top: 8px; }
+.day-panel { display: none; }
+.day-panel.active { display: block; }
+
+/* ── HORIZONTAL TABLE (rp5-style) ────────────────────────── */
+.ht-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+}
+.ht-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--fm);
+  white-space: nowrap;
+}
+.ht-table thead tr { background: var(--layer3); }
+.ht-label-head {
+  min-width: 110px;
+  width: 110px;
+  background: #ffffff;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  border-right: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="dark"] .ht-label-head { background: #22262f; }
+
+.ht-hour {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  text-align: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border2);
+  min-width: 36px;
+  letter-spacing: 0.2px;
+  font-family: var(--f);
+}
+.ht-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  text-align: right;
+  padding: 7px 10px 7px 8px;
+  border-right: 2px solid var(--border);
+  border-bottom: 1px solid var(--border2);
+  background: #ffffff;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  white-space: nowrap;
+  font-family: var(--f);
+  letter-spacing: 0.1px;
+}
+[data-theme="dark"] .ht-label { background: #22262f; }
+.ht-table tbody tr:nth-child(even) .ht-label { background: #f5f7fc; }
+[data-theme="dark"] .ht-table tbody tr:nth-child(even) .ht-label { background: #1e2330; }
+.ht-table tbody tr:nth-child(even) .ht-cell  { background: var(--glass); }
+.ht-table tbody tr:hover .ht-label,
+.ht-table tbody tr:hover .ht-cell { background: var(--glass-hov) !important; }
+.ht-cell {
+  text-align: center;
+  padding: 7px 8px;
+  border-right: 1px solid var(--border2);
+  border-bottom: 1px solid var(--border2);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+}
+.ht-table tbody tr:nth-child(even) .ht-cell { background: var(--glass); }
+.ht-table tbody tr:hover .ht-cell,
+.ht-table tbody tr:hover .ht-label { background: var(--glass-hov) !important; }
+.ht-icon { font-size: 15px; padding: 3px 5px; }
+.ht-row-icon { font-size: 13px; }
+
+/* ── COLOR CODING ────────────────────────────────────────── */
+.temp-cold { color: var(--cold); font-weight: 600; }
+.temp-hot  { color: var(--hot);  font-weight: 600; }
+.precip-hl { background: var(--blue-hl) !important; color: var(--accent); font-weight: 500; }
+.wind-hl   { background: var(--orange-hl) !important; color: var(--orange); font-weight: 600; }
+
+/* Видимость */
+.vis-low { background: rgba(255,59,48,0.18) !important; color: var(--hot); font-weight: 600; }
+.vis-mid { background: rgba(255,159,10,0.18) !important; color: var(--orange); font-weight: 500; }
+
+/* Облачность */
+.cld-high { color: var(--text2); }
+.cld-mid  { color: var(--text); }
+
+/* Направление ветра */
+.ht-wdir { font-size: 11px; letter-spacing: 0.5px; }
+
+/* Строка светофора */
+.tr-flight .ht-label { font-weight: 700; color: var(--text); }
+.ht-light { font-size: 14px; padding: 4px 6px; cursor: help; }
+.fl-red    { background: rgba(255,59,48,0.12) !important; }
+.fl-yellow { background: rgba(255,159,10,0.12) !important; }
+.fl-green  { background: rgba(48,209,88,0.10) !important; }
+.ht-label-flight {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+
+/* Легенда светофора */
+.flight-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 2px 2px;
+  font-size: 10px;
+  color: var(--text2);
+  font-family: var(--f);
+}
+.flight-legend span { display: flex; align-items: center; gap: 3px; }
+
+/* ── STATUS ──────────────────────────────────────────────── */
+.status-msg { color: var(--text2); font-size: 13px; padding: 16px; text-align: center; font-family: var(--f); }
+.error-msg  { color: var(--hot); }
+
+/* ── SPINNER ─────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── MODEL SWITCHER ──────────────────────────────────────── */
+.model-switcher {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.model-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text2);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+.model-btn {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--f);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.model-btn:hover { background: var(--glass-hov); color: var(--text); }
+.model-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── CUSTOM CITY BLOCK ───────────────────────────────────── */
+.custom-city-block {
+  background: var(--layer1);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.custom-city-header {
+  display: flex;
+  align-items: center;
+  padding: 13px 16px;
+  cursor: pointer;
+  gap: 10px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 52px;
+  transition: background 0.15s;
+}
+.custom-city-header:hover { background: var(--glass); }
+.custom-city-block.open .city-chevron { transform: rotate(90deg); opacity: 0.7; }
+.custom-city-name {
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+  letter-spacing: -0.2px;
+  color: var(--accent);
+}
+.custom-city-content {
+  display: none;
+  padding: 0 16px 16px;
+}
+.custom-city-block.open .custom-city-content { display: block; }
+
+/* Input area */
+.custom-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+.custom-input-hint {
+  font-size: 11px;
+  color: var(--text2);
+  font-family: var(--f);
+  line-height: 1.5;
+}
+.custom-input-hint b { color: var(--text); font-weight: 600; }
+.custom-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  position: relative;
+}
+.custom-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--f);
+  padding: 10px 36px 10px 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+}
+.custom-input::placeholder { color: var(--text3); }
+.custom-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.15);
+}
+[data-theme="light"] .custom-input:focus {
+  box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+}
+.custom-input-clear {
+  position: absolute;
+  right: calc(/* search btn width */ 70px + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  display: none;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 1;
+}
+.custom-input-clear:hover { color: var(--text); }
+.custom-input-clear.visible { display: block; }
+.custom-search-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--f);
+  padding: 10px 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.custom-search-btn:hover  { opacity: 0.88; }
+.custom-search-btn:active { transform: scale(0.96); }
+.custom-search-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Status / result */
+.custom-status {
+  font-size: 12px;
+  font-family: var(--f);
+  color: var(--text2);
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.custom-status.error { color: var(--hot); }
+.custom-status.ok    { color: var(--accent2); }
+.custom-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--border2);
+  margin-top: 4px;
+}
+.custom-result-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--f);
+  flex: 1;
+}
+.custom-result-coords {
+  font-size: 10px;
+  color: var(--text2);
+  font-family: var(--fm);
+}
+
+/* Список вариантов города */
+.custom-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 0;
+}
+.custom-variant-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--f);
+  padding: 10px 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+.custom-variant-btn:hover  { background: var(--glass-hov); border-color: var(--accent); }
+.custom-variant-btn:active { opacity: 0.7; }
+.custom-variant-coords {
+  font-size: 10px;
+  color: var(--text2);
+  font-family: var(--fm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .app-header { padding: 10px 12px 8px; }
+  .main-content { padding: 10px 10px 24px; }
+  .app-title { font-size: 16px; }
+  .summary-city { font-size: 9px; }
+  .summary-temps { font-size: 11px; }
+  .city-name { font-size: 14px; }
+  .weather-table { font-size: 11.5px; min-width: 340px; }
+  .weather-table th { font-size: 9px; padding: 6px 7px; }
+  .weather-table td { padding: 5px 7px; }
+  .source-badge { display: none; }
+}
+@media (max-width: 360px) {
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-top">
+    <div class="app-title">⛅ <span>Погода</span></div>
+    <span class="source-badge">Open-Meteo</span>
+    <div class="header-controls">
+      <button class="btn btn-accent" id="refreshBtn" onclick="refreshData()">
+        <span>🔄</span> Обновить
+      </button>
+      <button class="btn" onclick="expandAllCities()">⊞ Развернуть</button>
+      <button class="btn" onclick="collapseAllCities()">⊟ Свернуть</button>
+      <button class="btn btn-icon" id="themeBtn" onclick="toggleTheme()">☀️</button>
+    </div>
+  </div>
+  <div class="updated-time" id="updatedTime">Загрузка данных…</div>
+  <div class="model-switcher" id="modelSwitcher"></div>
+  <div class="summary-grid" id="summaryGrid"></div>
+</header>
+
+<main class="main-content" id="mainContent"></main>
+
+<!-- Custom city search block -->
+<div class="main-content" style="padding-top:0;padding-bottom:32px;max-width:960px;margin:0 auto">
+  <div class="custom-city-block" id="customCityBlock">
+    <div class="custom-city-header" onclick="toggleCustomBlock()" role="button">
+      <span class="city-chevron">
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+          <path d="M2 2l6 5-6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span style="font-size:20px">🔍</span>
+      <span class="custom-city-name">Найти любой город</span>
+    </div>
+    <div class="custom-city-content" id="customCityContent">
+      <div class="custom-input-wrap">
+        <div class="custom-input-hint">
+          Введите одно из:<br>
+          <b>Название города</b> — например: <b>Якутск</b> или <b>Novosibirsk</b><br>
+          <b>Координаты</b> — например: <b>54.7688672, 20.6025494</b> или <b>(54.768, 20.602)</b><br>
+          <small style="color:var(--text3)">Координаты можно скопировать прямо из Google Maps → зажать место на карте → прокрутить карточку вниз</small>
+        </div>
+        <div class="custom-input-row">
+          <input class="custom-input" id="customInput"
+            type="text"
+            placeholder="Город или координаты…"
+            onkeydown="if(event.key==='Enter')searchCustomCity()"
+            oninput="onCustomInputChange()"
+            autocomplete="off" autocorrect="off" spellcheck="false">
+          <button class="custom-input-clear" id="customInputClear" onclick="clearCustomInput()" title="Очистить">✕</button>
+          <button class="custom-search-btn" id="customSearchBtn" onclick="searchCustomCity()">Найти</button>
+        </div>
+        <div class="custom-status" id="customStatus"></div>
+      </div>
+      <div id="customResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating sticky table header -->
+<div class="sticky-thead" id="stickyThead">
+  <div class="sticky-context" id="stickyContext">
+    <span class="sticky-context-icon" id="stickyIcon"></span>
+    <span class="sticky-context-city" id="stickyCity"></span>
+    <span class="sticky-context-sep">·</span>
+    <span class="sticky-context-date" id="stickyDate"></span>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:52px">Время</th>
+      <th style="width:32px"></th>
+      <th>Температура °C</th>
+      <th>Вер. осадков %</th>
+      <th>Осадки мм</th>
+      <th>Ветер м/с</th>
+      <th>Порывы м/с</th>
+    </tr></thead>
+  </table>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────
+const CITIES = [
+  { name: 'Братск',                lat: 56.1517,  lon: 101.6346  },
+  { name: 'Железногорск-Илимский', lat: 56.5851,  lon: 104.1322  },
+  { name: 'Усть-Кут',              lat: 56.7833,  lon: 105.7667  },
+  { name: 'Киренск',               lat: 57.7736,  lon: 108.1108  },
+  { name: 'Талакан Аэропорт',      lat: 59.86776, lon: 111.03873 },
+  { name: 'Ленск',                 lat: 60.7167,  lon: 114.9333  },
+];
+const HOURS     = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23];
+const DAYS_AHEAD = 3;
+const RU_DAYS   = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+
+const MODELS = [
+  { id: 'best_match',    label: 'Auto',  title: 'Лучшая доступная модель (авто)' },
+  { id: 'icon_seamless', label: 'ICON',  title: 'ICON — немецкая модель DWD (используется на rp5)' },
+  { id: 'gfs_seamless',  label: 'GFS',   title: 'GFS — американская модель NOAA' },
+  { id: 'ecmwf_ifs025',  label: 'ECMWF', title: 'ECMWF IFS — европейская модель (высокая точность)' },
+  { id: 'gem_seamless',  label: 'GEM',   title: 'GEM — канадская модель' },
+];
+
+let currentModel = localStorage.getItem('wx-model') || 'gfs_seamless';
+let weatherData = {};
+
+// ── WEATHER CODE → ICON ───────────────────────────────────
+function wxIcon(code, day) {
+  if (code == null) return '🌡';
+  if (code === 0)          return day ? '☀️' : '🌙';
+  if (code <= 2)           return day ? '🌤' : '🌤';
+  if (code === 3)          return '☁️';
+  if (code <= 49)          return '🌫';
+  if (code <= 59)          return '🌦';
+  if (code <= 69)          return '🌧';
+  if (code <= 79)          return '🌨';
+  if (code <= 82)          return '🌧';
+  if (code <= 86)          return '❄️';
+  if (code <= 99)          return '⛈';
+  return '🌡';
+}
+function isDaytime(h) { return h >= 6 && h < 21; }
+function dayIcon(parsed, dateStr) {
+  const d = parsed[`${dateStr}T12:00`];
+  return d ? wxIcon(d.code, true) : '🌡';
+}
+
+// ── THEME ─────────────────────────────────────────────────
+function initTheme() {
+  const t = localStorage.getItem('wx-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme() {
+  const n = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', n);
+  localStorage.setItem('wx-theme', n);
+  document.getElementById('themeBtn').textContent = n === 'dark' ? '☀️' : '🌙';
+}
+
+// ── DATE HELPERS ──────────────────────────────────────────
+function pad2(n) { return String(n).padStart(2,'0'); }
+function formatDate(s) {
+  const [y,m,d] = s.split('-').map(Number);
+  return `${pad2(d)}.${pad2(m)}.${y} (${RU_DAYS[new Date(y,m-1,d).getDay()]})`;
+}
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+function dateRange() {
+  return Array.from({length: DAYS_AHEAD}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate()+i);
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  });
+}
+
+// ── API ───────────────────────────────────────────────────
+async function fetchCity(city) {
+  const [s, e] = [dateRange()[0], dateRange().at(-1)];
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}`
+    + `&hourly=temperature_2m,precipitation_probability,precipitation,windspeed_10m,windgusts_10m,weathercode,visibility,cloudcover,winddirection_10m`
+    + `&wind_speed_unit=ms&start_date=${s}&end_date=${e}&timezone=auto&timeformat=iso8601`
+    + `&models=${currentModel}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+function parseData(raw) {
+  const { time, temperature_2m:t2m, precipitation_probability:prob,
+          precipitation:prec, windspeed_10m:wspd, windgusts_10m:wgst,
+          weathercode:wcode, visibility:vis, cloudcover:cld,
+          winddirection_10m:wdir } = raw.hourly;
+  const map = {};
+  time.forEach((ts, i) => {
+    const key = ts.slice(0,16);
+    map[key] = {
+      temp: Math.round(t2m[i]*10)/10,
+      prob: prob[i],
+      prec: Math.round(prec[i]*10)/10,
+      wind: Math.round(wspd[i]*10)/10,
+      gust: Math.round(wgst[i]*10)/10,
+      code: wcode?.[i] ?? null,
+      vis:  vis  ? Math.round(vis[i])  : null,
+      cld:  cld  ? cld[i]              : null,
+      wdir: wdir ? wdir[i]             : null,
+    };
+  });
+  return map;
+}
+function minMax(parsed) {
+  const t = todayStr();
+  let lo = Infinity, hi = -Infinity;
+  Object.entries(parsed).forEach(([k,v]) => {
+    if (k.startsWith(t)) { if(v.temp<lo)lo=v.temp; if(v.temp>hi)hi=v.temp; }
+  });
+  return lo===Infinity ? null : { min: Math.round(lo), max: Math.round(hi) };
+}
+function currentTemp(parsed) {
+  // Ближайший прошедший час
+  const now = new Date();
+  const ds  = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
+  const key = `${ds}T${pad2(now.getHours())}:00`;
+  const d   = parsed[key];
+  if (d) return { temp: d.temp, icon: wxIcon(d.code, isDaytime(now.getHours())) };
+  // Если нет — берём последний доступный час сегодня
+  for (let h = now.getHours(); h >= 0; h--) {
+    const k = `${ds}T${pad2(h)}:00`;
+    if (parsed[k]) return { temp: parsed[k].temp, icon: wxIcon(parsed[k].code, isDaytime(h)) };
+  }
+  return null;
+}
+
+// ── RENDER HELPERS ────────────────────────────────────────
+function tCls(v)  { return v<0?'temp-cold':v>=20?'temp-hot':''; }
+function tStr(v)  { return v>0?`+${v}`:`${v}`; }
+function pCls(p,q){ return (p>=50||q>0)?'precip-hl':''; }
+function wCls(v)  { return v>=10?'wind-hl':''; }
+function gCls(v)  { return v>=12?'wind-hl':''; }
+
+// Направление ветра: градусы → стрелка + сокращение
+function wdirStr(deg) {
+  if (deg == null) return '—';
+  const dirs = ['С','СВ','В','ЮВ','Ю','ЮЗ','З','СЗ'];
+  const arrows = ['↓','↙','←','↖','↑','↗','→','↘'];
+  const i = Math.round(deg / 45) % 8;
+  return `${arrows[i]}${dirs[i]}`;
+}
+
+// Видимость: форматируем читаемо
+function visStr(m) {
+  if (m == null) return '—';
+  if (m >= 10000) return '>10км';
+  if (m >= 1000)  return (m/1000).toFixed(1)+'км';
+  return m+'м';
+}
+
+// Облачность CSS
+function cldCls(v) {
+  if (v == null) return '';
+  if (v >= 75) return 'cld-high';
+  if (v >= 40) return 'cld-mid';
+  return '';
+}
+
+// Видимость CSS
+function visCls(v) {
+  if (v == null) return '';
+  if (v < 1500)  return 'vis-low';
+  if (v < 5000)  return 'vis-mid';
+  return '';
+}
+
+// ── FLIGHT SAFETY LIGHT ──────────────────────────────────
+// 🔴 Запрет: видимость <1500м, ветер >=15м/с, порывы >=18м/с, облачность 100% + видимость <3км
+// 🟡 Осторожно: видимость <5000м, ветер >=10м/с, порывы >=12м/с, осадки >0, облачность >=75%
+// 🟢 Норма: всё остальное
+function flightLight(d) {
+  if (!d) return { light: '⚫', cls: '', tip: 'Нет данных' };
+  const reasons = [];
+
+  // Красный — жёсткие ограничения
+  if (d.vis != null && d.vis < 1500)  reasons.push({ lvl: 2, txt: `Видимость ${visStr(d.vis)}` });
+  if (d.wind >= 15)                   reasons.push({ lvl: 2, txt: `Ветер ${d.wind}м/с` });
+  if (d.gust >= 18)                   reasons.push({ lvl: 2, txt: `Порывы ${d.gust}м/с` });
+  if (d.code != null && d.code >= 95) reasons.push({ lvl: 2, txt: 'Гроза' });
+
+  // Жёлтый — ограничения
+  if (d.vis != null && d.vis < 5000 && d.vis >= 1500) reasons.push({ lvl: 1, txt: `Видимость ${visStr(d.vis)}` });
+  if (d.wind >= 10 && d.wind < 15)    reasons.push({ lvl: 1, txt: `Ветер ${d.wind}м/с` });
+  if (d.gust >= 12 && d.gust < 18)    reasons.push({ lvl: 1, txt: `Порывы ${d.gust}м/с` });
+  if (d.prec > 0)                     reasons.push({ lvl: 1, txt: `Осадки ${d.prec}мм` });
+
+  const maxLvl = reasons.length ? Math.max(...reasons.map(r=>r.lvl)) : 0;
+  if (maxLvl >= 2) {
+    const tip = reasons.filter(r=>r.lvl===2).map(r=>r.txt).join(', ');
+    return { light: '🔴', cls: 'fl-red', tip };
+  }
+  if (maxLvl === 1) {
+    const tip = reasons.filter(r=>r.lvl===1).map(r=>r.txt).join(', ');
+    return { light: '🟡', cls: 'fl-yellow', tip };
+  }
+  return { light: '🟢', cls: 'fl-green', tip: 'Погода лётная' };
+}
+
+// ── HORIZONTAL TABLE (rp5-style) ──────────────────────────
+function buildHorizTable(parsed, ds, cityName) {
+  const hours = HOURS;
+  const cols = hours.map(hr => {
+    const key = `${ds}T${pad2(hr)}:00`;
+    return parsed[key] || null;
+  });
+
+  const icon = dayIcon(parsed, ds);
+
+  function row(label, cells, extraCls='') {
+    return `<tr class="${extraCls}"><td class="ht-label">${label}</td>${cells}</tr>`;
+  }
+
+  // Светофор
+  const lightCells = cols.map(d => {
+    const fl = flightLight(d);
+    return `<td class="ht-cell ht-light ${fl.cls}" title="${fl.tip}">${fl.light}</td>`;
+  }).join('');
+
+  // Иконки
+  const iconCells = cols.map((d,i) =>
+    `<td class="ht-cell ht-icon">${d ? wxIcon(d.code, isDaytime(hours[i])) : '—'}</td>`
+  ).join('');
+
+  // Температура
+  const tempCells = cols.map(d => {
+    if (!d) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ${tCls(d.temp)}">${tStr(d.temp)}</td>`;
+  }).join('');
+
+  // Видимость
+  const visCells = cols.map(d => {
+    if (!d || d.vis==null) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ${visCls(d.vis)}">${visStr(d.vis)}</td>`;
+  }).join('');
+
+  // Облачность
+  const cldCells = cols.map(d => {
+    if (!d || d.cld==null) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ${cldCls(d.cld)}">${d.cld}%</td>`;
+  }).join('');
+
+  // Вероятность осадков
+  const probCells = cols.map(d => {
+    if (!d) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ${pCls(d.prob,d.prec)}">${d.prob??'—'}</td>`;
+  }).join('');
+
+  // Осадки мм
+  const precCells = cols.map(d => {
+    if (!d) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ${pCls(d.prob,d.prec)}">${d.prec}</td>`;
+  }).join('');
+
+  // Ветер
+  const windCells = cols.map(d => {
+    if (!d) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ${wCls(d.wind)}">${d.wind}</td>`;
+  }).join('');
+
+  // Порывы
+  const gustCells = cols.map(d => {
+    if (!d) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ${gCls(d.gust)}">${d.gust}</td>`;
+  }).join('');
+
+  // Направление ветра
+  const wdirCells = cols.map(d => {
+    if (!d) return `<td class="ht-cell">—</td>`;
+    return `<td class="ht-cell ht-wdir">${wdirStr(d.wdir)}</td>`;
+  }).join('');
+
+  // Шапка — часы
+  const hourHeaders = hours.map(hr =>
+    `<th class="ht-hour">${pad2(hr)}</th>`
+  ).join('');
+
+  return `
+    <div class="ht-wrap">
+      <table class="ht-table" data-city="${cityName}" data-date="${formatDate(ds)}" data-icon="${icon}">
+        <thead>
+          <tr><th class="ht-label-head"></th>${hourHeaders}</tr>
+        </thead>
+        <tbody>
+          ${row('<span class="ht-label-flight">✈ Полёт</span>', lightCells, 'tr-flight')}
+          ${row('<span class="ht-row-icon">🌤</span>', iconCells)}
+          ${row('Температура °C', tempCells)}
+          ${row('Видимость', visCells)}
+          ${row('Облачность %', cldCells)}
+          ${row('Вер. осадков %', probCells)}
+          ${row('Осадки мм', precCells)}
+          ${row('Ветер м/с', windCells)}
+          ${row('Порывы м/с', gustCells)}
+          ${row('Направление', wdirCells)}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function buildCityContent(idx) {
+  const p = weatherData[idx];
+  if (!p) return `<div class="status-msg error-msg">Нет данных</div>`;
+  const dates = dateRange();
+  const uid = `tabs-${idx}`;
+
+  // Вкладки
+  const tabs = dates.map((ds, i) => {
+    const icon = dayIcon(p, ds);
+    return `<button class="day-tab ${i===0?'active':''}"
+      onclick="switchTab('${uid}', ${i})"
+      id="${uid}-tab-${i}">
+      <span class="day-tab-icon">${icon}</span>
+      <span class="day-tab-date">${formatDate(ds)}</span>
+    </button>`;
+  }).join('');
+
+  // Панели
+  const panels = dates.map((ds, i) =>
+    `<div class="day-panel ${i===0?'active':''}" id="${uid}-panel-${i}">
+      ${buildHorizTable(p, ds, idx < CITIES.length ? CITIES[idx].name : '')}
+    </div>`
+  ).join('');
+
+  const legend = `<div class="flight-legend">
+    <span>🟢 Лётная</span>
+    <span>🟡 С ограничениями (видимость &lt;5км / ветер ≥10м/с / осадки)</span>
+    <span>🔴 Нелётная (видимость &lt;1.5км / ветер ≥15м/с / гроза)</span>
+  </div>`;
+
+  return `
+    ${legend}
+    <div class="day-tabs" id="${uid}">${tabs}</div>
+    <div class="day-panels">${panels}</div>`;
+}
+
+function buildCustomContent(parsed, cityName) {
+  const dates = dateRange();
+  const uid = `tabs-custom`;
+
+  const tabs = dates.map((ds, i) => {
+    const icon = dayIcon(parsed, ds);
+    return `<button class="day-tab ${i===0?'active':''}"
+      onclick="switchTab('${uid}', ${i})"
+      id="${uid}-tab-${i}">
+      <span class="day-tab-icon">${icon}</span>
+      <span class="day-tab-date">${formatDate(ds)}</span>
+    </button>`;
+  }).join('');
+
+  const panels = dates.map((ds, i) =>
+    `<div class="day-panel ${i===0?'active':''}" id="${uid}-panel-${i}">
+      ${buildHorizTable(parsed, ds, cityName)}
+    </div>`
+  ).join('');
+
+  return `
+    <div class="day-tabs" id="${uid}">${tabs}</div>
+    <div class="day-panels">${panels}</div>`;
+}
+
+function switchTab(uid, idx) {
+  document.querySelectorAll(`#${uid} .day-tab`).forEach((t,i) =>
+    t.classList.toggle('active', i === idx));
+  document.querySelectorAll(`#${uid} ~ .day-panels .day-panel`).forEach((p,i) =>
+    p.classList.toggle('active', i === idx));
+  // fallback: панели внутри того же контейнера
+  const container = document.getElementById(uid)?.parentElement;
+  if (container) {
+    container.querySelectorAll('.day-panel').forEach((p,i) =>
+      p.classList.toggle('active', i === idx));
+  }
+}
+
+// ── MODEL SWITCHER ────────────────────────────────────────
+function renderModelSwitcher() {
+  const el = document.getElementById('modelSwitcher');
+  if (!el) return;
+  el.innerHTML = `<span class="model-label">Модель:</span>`
+    + MODELS.map(m =>
+        `<button class="model-btn ${m.id === currentModel ? 'active' : ''}"
+          title="${m.title}"
+          onclick="selectModel('${m.id}')">${m.label}</button>`
+      ).join('');
+}
+function selectModel(id) {
+  currentModel = id;
+  localStorage.setItem('wx-model', id);
+  renderModelSwitcher();
+  refreshData();
+}
+
+// ── SUMMARY ───────────────────────────────────────────────
+function renderSummary() {
+  const dates = dateRange();
+  document.getElementById('summaryGrid').innerHTML = CITIES.map((city,i) => {
+    let temps = `<span class="summary-temps" style="color:var(--text2)">…</span>`;
+    let icon  = '';
+    if (weatherData[i]) {
+      const ct = currentTemp(weatherData[i]);
+      icon = ct ? ct.icon : dayIcon(weatherData[i], dates[0]);
+      temps = ct
+        ? `<span class="summary-temps">${tStr(ct.temp)}°C</span>`
+        : `<span class="summary-temps" style="color:var(--text2)">—</span>`;
+    }
+    const url = `https://www.google.com/maps?q=${city.lat},${city.lon}`;
+    return `<div class="summary-item">
+      <span class="summary-icon">${icon}</span>
+      <span class="summary-body">
+        <span class="summary-city" title="${city.name}">${city.name}</span>
+        ${temps}
+      </span>
+      <button class="summary-map-btn" onclick="window.open('${url}','_blank')" title="Открыть на карте">🗺️</button>
+    </div>`;
+  }).join('');
+}
+
+// ── MAIN CONTENT ──────────────────────────────────────────
+function renderMain() {
+  const dates = dateRange();
+  document.getElementById('mainContent').innerHTML = CITIES.map((city,i) => {
+    const isOpen = document.querySelector(`[data-city="${i}"]`)?.classList.contains('open') || false;
+    const icon   = weatherData[i] ? dayIcon(weatherData[i], dates[0]) : '';
+    const mm     = weatherData[i] ? minMax(weatherData[i]) : null;
+    const inline = mm ? `<span class="city-temps-inline">${tStr(mm.min)}…${tStr(mm.max)}°C</span>` : '';
+    const url    = `https://www.google.com/maps?q=${city.lat},${city.lon}`;
+    return `<div class="city-block ${isOpen?'open':''}" data-city="${i}">
+      <div class="city-header" onclick="toggleCity(${i})" role="button" aria-expanded="${isOpen}">
+        <span class="city-chevron">
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+            <path d="M2 2l6 5-6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="city-wx-icon">${icon}</span>
+        <span class="city-name">${city.name}</span>
+        ${inline}
+        <button class="city-map-btn" onclick="event.stopPropagation();window.open('${url}','_blank')" title="Открыть на карте">🗺️</button>
+      </div>
+      <div class="city-content" id="city-content-${i}">${buildCityContent(i)}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateToggleAllBtn() {} // больше не нужна, оставляем для совместимости
+
+function expandAllCities() {
+  const cityBlocks  = document.querySelectorAll('.city-block');
+  const customBlock = document.getElementById('customCityBlock');
+  cityBlocks.forEach(b => {
+    b.classList.add('open');
+    b.querySelector('.city-header')?.setAttribute('aria-expanded', true);
+  });
+  if (customBlock) customBlock.classList.add('open');
+}
+function collapseAllCities() {
+  const cityBlocks  = document.querySelectorAll('.city-block');
+  const customBlock = document.getElementById('customCityBlock');
+  cityBlocks.forEach(b => {
+    b.classList.remove('open');
+    b.querySelector('.city-header')?.setAttribute('aria-expanded', false);
+  });
+  if (customBlock) customBlock.classList.remove('open');
+}
+function toggleAllCities() {} // совместимость — не используется
+function toggleCity(idx) {
+  const b = document.querySelector(`[data-city="${idx}"]`);
+  if (b) { b.classList.toggle('open'); b.querySelector('.city-header')?.setAttribute('aria-expanded', b.classList.contains('open')); }
+}
+
+// ── LOAD ──────────────────────────────────────────────────
+async function loadCity(idx) {
+  try   { weatherData[idx] = parseData(await fetchCity(CITIES[idx])); }
+  catch { weatherData[idx] = null; }
+}
+async function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.innerHTML = `<span class="spinner"></span> Загрузка…`;
+  btn.disabled  = true;
+  weatherData   = {};
+  renderSummary();
+  await Promise.all(CITIES.map((_,i) => loadCity(i)));
+  renderSummary();
+
+  // Сохраняем какие блоки открыты
+  const openStates = CITIES.map((_,i) =>
+    document.querySelector(`[data-city="${i}"]`)?.classList.contains('open') || false
+  );
+
+  // Перерисовываем весь mainContent (восстанавливает open-состояние)
+  renderMain();
+
+  // Принудительно обновляем содержимое открытых блоков
+  openStates.forEach((wasOpen, i) => {
+    if (wasOpen) {
+      const content = document.getElementById(`city-content-${i}`);
+      if (content) content.innerHTML = buildCityContent(i);
+    }
+  });
+
+  const n = new Date();
+  const ts = `${pad2(n.getDate())}.${pad2(n.getMonth()+1)}.${n.getFullYear()} ${pad2(n.getHours())}:${pad2(n.getMinutes())}`;
+  document.getElementById('updatedTime').textContent = `Обновлено: ${ts}`;
+  localStorage.setItem('wx-updated', ts);
+  btn.innerHTML = '🔄 Обновить';
+  btn.disabled  = false;
+}
+
+// ── CUSTOM CITY ───────────────────────────────────────────
+function toggleCustomBlock() {
+  const block = document.getElementById('customCityBlock');
+  block.classList.toggle('open');
+}
+
+function onCustomInputChange() {
+  const val = document.getElementById('customInput').value;
+  const clr = document.getElementById('customInputClear');
+  if (clr) clr.classList.toggle('visible', val.length > 0);
+}
+function clearCustomInput() {
+  const input  = document.getElementById('customInput');
+  const clr    = document.getElementById('customInputClear');
+  const status = document.getElementById('customStatus');
+  const result = document.getElementById('customResult');
+  input.value      = '';
+  status.className = 'custom-status';
+  status.textContent = '';
+  result.innerHTML = '';
+  if (clr) clr.classList.remove('visible');
+  input.focus();
+}
+
+// Парсим ввод → {lat, lon, name} или [{lat,lon,name}...] или null
+async function parseInput(raw) {
+  // Нормализуем: заменяем европейские запятые-десятичные на точки
+  // "52,2501518, 21,0058621" → "52.2501518, 21.0058621"
+  // Но только если это похоже на координаты, а не название города
+  let s = raw.trim();
+
+  // 1. Ссылка Google Maps с координатами
+  const mapsRe = /[?&/@](?:q=|ll=)?(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/;
+  const mapsM  = s.match(mapsRe);
+  if (mapsM && s.includes('google')) {
+    return [{ lat: parseFloat(mapsM[1]), lon: parseFloat(mapsM[2]), name: null }];
+  }
+
+  // 2. Координаты с точкой или запятой как десятичным разделителем
+  // Формат: "52,2501518, 21,0058621" или "52.25, 21.00" или "(52.25, 21.00)"
+  // Сначала пробуем нормализовать европейский формат
+  const normalized = s.replace(/^\(|\)$/g, '').trim(); // убираем скобки
+  // Паттерн: число(запятая/точка)число РАЗДЕЛИТЕЛЬ число(запятая/точка)число
+  const euroRe = /^(-?\d{1,3})[,.](\d+)\s*[,;]\s*(-?\d{1,3})[,.](\d+)$/;
+  const euroM  = normalized.match(euroRe);
+  if (euroM) {
+    const lat = parseFloat(`${euroM[1]}.${euroM[2]}`);
+    const lon = parseFloat(`${euroM[3]}.${euroM[4]}`);
+    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      return [{ lat, lon, name: null }];
+    }
+  }
+  // Обычный формат с точкой
+  const coordRe = /^\(?\s*(-?\d{1,3}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)\s*\)?$/;
+  const coordM  = normalized.match(coordRe);
+  if (coordM) {
+    const lat = parseFloat(coordM[1]);
+    const lon = parseFloat(coordM[2]);
+    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      return [{ lat, lon, name: null }];
+    }
+  }
+
+  // 3. Plus code (62X3+CXV Варшава) — берём только текстовую часть после пробела
+  const plusCodeRe = /^[0-9A-Z]{4}\+[0-9A-Z]{2,3}\s+(.+)$/i;
+  const plusM = s.match(plusCodeRe);
+  if (plusM) s = plusM[1]; // оставляем только "Варшава, Польша"
+
+  // 4. Название города — запрашиваем до 5 результатов
+  const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(s)}&count=5&language=ru&format=json`;
+  const resp   = await fetch(geoUrl);
+  if (!resp.ok) throw new Error('Ошибка геокодинга');
+  const data   = await resp.json();
+  if (!data.results?.length) return null;
+  return data.results.map(r => ({
+    lat:  r.latitude,
+    lon:  r.longitude,
+    name: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
+  }));
+}
+
+async function loadAndShowCustomCity(lat, lon, name) {
+  const status = document.getElementById('customStatus');
+  const result = document.getElementById('customResult');
+  status.className = 'custom-status';
+  status.innerHTML = '<span class="spinner"></span> Загружаю погоду…';
+  try {
+    const raw    = await fetchCity({ lat, lon });
+    const parsed = parseData(raw);
+    const ct     = currentTemp(parsed);
+    const icon   = ct ? ct.icon : '🌡';
+    const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+    const dates  = dateRange();
+    status.className = 'custom-status ok';
+    status.textContent = `✓ ${name}`;
+    result.innerHTML = `
+      <div class="custom-result-header">
+        <span style="font-size:22px">${icon}</span>
+        <span class="custom-result-name">${name}</span>
+        <span class="custom-result-coords">${lat}, ${lon}</span>
+        <button class="city-map-btn" onclick="window.open('${mapsUrl}','_blank')" title="Открыть на карте">🗺️</button>
+      </div>
+      ${buildCustomContent(parsed, name)}`;
+  } catch(e) {
+    status.className = 'custom-status error';
+    status.textContent = `❌ Ошибка загрузки: ${e.message}`;
+  }
+}
+
+async function searchCustomCity() {
+  const input  = document.getElementById('customInput');
+  const btn    = document.getElementById('customSearchBtn');
+  const status = document.getElementById('customStatus');
+  const result = document.getElementById('customResult');
+  const val    = input.value.trim();
+
+  if (!val) {
+    status.className = 'custom-status error';
+    status.textContent = 'Введите город или координаты.';
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = '…';
+  status.className = 'custom-status';
+  status.innerHTML = '<span class="spinner"></span> Определяю место…';
+  result.innerHTML = '';
+
+  try {
+    const locs = await parseInput(val);
+    if (!locs || !locs.length) {
+      status.className = 'custom-status error';
+      status.textContent = '❌ Место не найдено. Попробуйте другое название или координаты.';
+      return;
+    }
+
+    // Если один результат — сразу грузим
+    if (locs.length === 1) {
+      const { lat, lon, name } = locs[0];
+      const displayName = name || `${lat}, ${lon}`;
+      await loadAndShowCustomCity(
+        Math.round(lat*100000)/100000,
+        Math.round(lon*100000)/100000,
+        displayName
+      );
+      return;
+    }
+
+    // Несколько результатов — показываем список для выбора
+    status.className = 'custom-status ok';
+    status.textContent = `Найдено ${locs.length} варианта — выберите нужный:`;
+    result.innerHTML = `<div class="custom-variants">${locs.map((l,i) =>
+      `<button class="custom-variant-btn" onclick="selectVariant(${i})"
+        data-lat="${l.lat}" data-lon="${l.lon}" data-name="${l.name}">
+        📍 ${l.name}
+        <span class="custom-variant-coords">${Math.round(l.lat*1000)/1000}, ${Math.round(l.lon*1000)/1000}</span>
+      </button>`
+    ).join('')}</div>`;
+
+  } catch(e) {
+    status.className = 'custom-status error';
+    status.textContent = `❌ Ошибка: ${e.message}`;
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Найти';
+  }
+}
+
+async function selectVariant(idx) {
+  const btns = document.querySelectorAll('.custom-variant-btn');
+  const b    = btns[idx];
+  if (!b) return;
+  const lat  = parseFloat(b.dataset.lat);
+  const lon  = parseFloat(b.dataset.lon);
+  const name = b.dataset.name;
+  document.getElementById('customInput').value = name;
+  document.getElementById('customResult').innerHTML = '';
+  await loadAndShowCustomCity(Math.round(lat*100000)/100000, Math.round(lon*100000)/100000, name);
+}
+
+// ── INIT ──────────────────────────────────────────────────
+initTheme();
+renderModelSwitcher();
+renderSummary();
+renderMain();
+const saved = localStorage.getItem('wx-updated');
+if (saved) document.getElementById('updatedTime').textContent = `Обновлено: ${saved}`;
+refreshData();
+
+// ── STICKY TABLE HEADER ───────────────────────────────────
+// Показываем плавающую шапку когда thead любой таблицы уходит выше экрана,
+// и скрываем когда таблица полностью ушла за нижний край.
+(function initStickyThead() {
+  const floater   = document.getElementById('stickyThead');
+  const appHeader = document.querySelector('.app-header');
+  const elCity    = document.getElementById('stickyCity');
+  const elDate    = document.getElementById('stickyDate');
+  const elIcon    = document.getElementById('stickyIcon');
+  let   activeTable = null;
+
+  function syncWidths(srcTable) {
+    const srcCols = srcTable.querySelectorAll('thead th');
+    const dstCols = floater.querySelectorAll('th');
+    const srcRect = srcTable.getBoundingClientRect();
+    floater.style.left  = srcRect.left + 'px';
+    floater.style.width = srcRect.width + 'px';
+    srcCols.forEach((th, i) => {
+      if (dstCols[i]) dstCols[i].style.width = th.offsetWidth + 'px';
+    });
+    // Обновляем контекст
+    elCity.textContent = srcTable.dataset.city  || '';
+    elDate.textContent = srcTable.dataset.date  || '';
+    elIcon.textContent = srcTable.dataset.icon  || '';
+  }
+
+  function onScroll() {
+    const headerBottom = appHeader.getBoundingClientRect().bottom;
+    const tables = document.querySelectorAll('.weather-table');
+    let found = false;
+
+    for (const tbl of tables) {
+      const rect     = tbl.getBoundingClientRect();
+      const theadH   = tbl.querySelector('thead')?.offsetHeight || 34;
+      const theadBot = rect.top + theadH;
+      const tableBot = rect.bottom;
+
+      if (theadBot < headerBottom && tableBot > headerBottom + theadH) {
+        if (activeTable !== tbl) {
+          activeTable = tbl;
+          syncWidths(tbl);
+        } else {
+          const sr = tbl.getBoundingClientRect();
+          floater.style.left  = sr.left + 'px';
+          floater.style.width = sr.width + 'px';
+        }
+        floater.style.top = headerBottom + 'px';
+        floater.classList.add('visible');
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      floater.classList.remove('visible');
+      activeTable = null;
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+})();
+</script>
+</body>
+</html>
